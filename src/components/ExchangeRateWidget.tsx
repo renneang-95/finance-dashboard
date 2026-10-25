@@ -7,12 +7,15 @@ type Rate = {
   flag: string;
   rate: number;
   deltaPct: number;
+  baseCode?: string;
+  label?: string;
 };
 
 const BASE_RATES: Rate[] = [
   { currency: "Australian Dollar", code: "AUD", flag: "\uD83C\uDDE6\uD83C\uDDFA", rate: 1.54, deltaPct: 0.00 },
   { currency: "Singapore Dollar",  code: "SGD", flag: "\uD83C\uDDF8\uD83C\uDDEC", rate: 1.34, deltaPct: 0.00 },
   { currency: "British Pound",     code: "GBP", flag: "\uD83C\uDDEC\uD83C\uDDE7", rate: 0.79, deltaPct: 0.00 },
+  { currency: "Malaysian Ringgit", code: "MYR", flag: "\uD83C\uDDF2\uD83C\uDDFE", rate: 3.29, deltaPct: 0.00, baseCode: "SGD", label: "SGD/MYR" },
 ];
 
 function jitter(rate: number): number {
@@ -31,6 +34,7 @@ function getCurrencySymbol(code: string): string {
     case "USD": return "$";
     case "AUD": return "A$";
     case "SGD": return "S$";
+    case "MYR": return "RM";
     case "GBP": return "£";
     default:    return "";
   }
@@ -154,7 +158,7 @@ export function ExchangeRateWidget() {
                   <span className="text-xl leading-none">{r.flag}</span>
                   <div>
                     <p className="text-xs font-semibold text-[var(--text-primary)]">
-                      {r.code}
+                      {r.label ?? r.code}
                     </p>
                     <p className="text-xs text-[var(--text-muted)]">{r.currency}</p>
                   </div>
@@ -173,7 +177,7 @@ export function ExchangeRateWidget() {
                   >
                     <DeltaIcon size={11} />
                     <span>
-                      1 {r.code} = {formatRate(inverseRate)} USD
+                      1 {r.code} = {formatRate(inverseRate)} {r.baseCode ?? "USD"}
                     </span>
                     <span className="font-normal text-[var(--text-muted)]">
                       ({isUp ? "+" : ""}{r.deltaPct.toFixed(2)}%)
@@ -195,7 +199,7 @@ export function ExchangeRateWidget() {
                 <span className="text-xl leading-none">{r.flag}</span>
                 <div>
                   <p className="text-xs font-semibold text-[var(--text-primary)]">
-                    {r.code}
+                    {r.label ?? r.code}
                   </p>
                   <p className="text-xs text-[var(--text-muted)]">{r.currency}</p>
                 </div>
@@ -215,7 +219,7 @@ export function ExchangeRateWidget() {
                 >
                   <DeltaIcon size={11} />
                   <span>
-                    1 USD = {formatRate(r.rate)} {r.code}
+                    1 {r.baseCode ?? "USD"} = {formatRate(r.rate)} {r.code}
                   </span>
                   <span className="font-normal text-[var(--text-muted)]">
                     ({isUp ? "+" : ""}{r.deltaPct.toFixed(2)}%)
