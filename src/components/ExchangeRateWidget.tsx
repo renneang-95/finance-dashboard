@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 
 type Rate = {
@@ -7,12 +7,15 @@ type Rate = {
   flag: string;
   rate: number;
   deltaPct: number;
+  pair?: string;
 };
 
 const BASE_RATES: Rate[] = [
   { currency: "Australian Dollar", code: "AUD", flag: "\uD83C\uDDE6\uD83C\uDDFA", rate: 1.54, deltaPct: 0.00 },
   { currency: "Singapore Dollar",  code: "SGD", flag: "\uD83C\uDDF8\uD83C\uDDEC", rate: 1.34, deltaPct: 0.00 },
   { currency: "British Pound",     code: "GBP", flag: "\uD83C\uDDEC\uD83C\uDDE7", rate: 0.79, deltaPct: 0.00 },
+  { currency: "Malaysian Ringgit", code: "MYR", flag: "\uD83C\uDDF2\uD83C\uDDFE", rate: 3.2864, deltaPct: 0.00, pair: "SGD/MYR" },
+  { currency: "Indonesian Rupiah", code: "IDR", flag: "\uD83C\uDDEE\uD83C\uDDE9", rate: 12784.2500, deltaPct: 0.00, pair: "SGD/IDR" },
 ];
 
 function jitter(rate: number): number {
@@ -24,6 +27,11 @@ function formatRate(rate: number): string {
   if (rate < 0.001) return rate.toFixed(6);
   if (rate < 1)    return rate.toFixed(4);
   return rate.toFixed(2);
+}
+
+function isSingaporeBusinessHours(date: Date): boolean {
+  const singaporeHour = (date.getUTCHours() + 8) % 24;
+  return singaporeHour >= 8 && singaporeHour < 18;
 }
 
 function getCurrencySymbol(code: string): string {
@@ -51,18 +59,26 @@ export function ExchangeRateWidget() {
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRates((prev) =>
-        prev.map((r) => {
-          const newRate = jitter(r.rate);
-          const newDelta = parseFloat(((Math.random() - 0.48) * 0.8).toFixed(2));
-          return { ...r, rate: newRate, deltaPct: newDelta };
-        })
-      );
-      setLastUpdated(new Date());
-      setRefreshing(false);
-    }, 600);
+    setRates((prev) =>
+      prev.map((r) => {
+        const newRate = jitter(r.rate);
+        const newDelta = parseFloat(((Math.random() - 0.48) * 0.8).toFixed(2));
+        return { ...r, rate: newRate, deltaPct: newDelta };
+      })
+    );
+    setLastUpdated(new Date());
+    setTimeout(() => setRefreshing(false), 600);
   }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (isSingaporeBusinessHours(new Date())) {
+        handleRefresh();
+      }
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [handleRefresh]);
 
   const handleDirectionChange = (dir: Direction) => {
     setDirection(dir);
@@ -140,6 +156,41 @@ export function ExchangeRateWidget() {
           const isUp = r.deltaPct >= 0;
           const DeltaIcon = isUp ? TrendingUp : TrendingDown;
           const deltaColor = isUp ? "var(--success-text)" : "var(--status-critical)";
+
+          if (r.pair) {
+            return (
+              <div
+                key={r.pair}
+                className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--page)] px-3 py-2.5"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-xl leading-none">{r.flag}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">
+                      {r.pair}
+                    </p>
+                    <p className="text-xs text-[var(--text-muted)]">{r.currency}</p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <p className="tabular-nums text-sm font-semibold text-[var(--text-primary)]">
+                    {r.rate.toFixed(4)}
+                  </p>
+                  <div
+                    className="mt-0.5 flex items-center justify-end gap-1 text-xs font-medium tabular-nums"
+                    style={{ color: deltaColor }}
+                  >
+                    <DeltaIcon size={11} />
+                    <span>1 SGD = {r.rate.toFixed(4)} {r.code}</span>
+                    <span className="font-normal text-[var(--text-muted)]">
+                      ({isUp ? "+" : ""}{r.deltaPct.toFixed(2)}%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          }
 
           if (direction === "BASE_TO_USD") {
             // Foreign → USD: converted = inputAmount / r.rate (guard against division by zero)
