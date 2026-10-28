@@ -10,6 +10,12 @@ describe('ExchangeRateWidget', () => {
     expect(screen.getByText('GBP')).toBeInTheDocument()
   })
 
+  it('renders the SGD settlement pairs', () => {
+    render(<ExchangeRateWidget />)
+    expect(screen.getByText('SGD/MYR')).toBeInTheDocument()
+    expect(screen.getByText('SGD/IDR')).toBeInTheDocument()
+  })
+
   it('converts USD to GBP using the current rate', () => {
     render(<ExchangeRateWidget />)
     const amountInput = screen.getByPlaceholderText('1000')
